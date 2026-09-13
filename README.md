@@ -1,6 +1,6 @@
 # Bollard Trainer
 
-🔗 [Open App](https://tgm-hub.github.io/bollards-trainer
+🔗 [Open App](https://tgm-hub.github.io/bollards-trainer)
 Entraînement à la reconnaissance des bornes de signalisation pour GeoGuessr.
 949 bornes, 109 pays.
 
