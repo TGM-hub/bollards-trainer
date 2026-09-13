@@ -1,0 +1,11 @@
+# Rien de tout ça ne quitte cette machine si le repo devient public un jour.
+# En repo PRIVÉ tu peux commenter ces deux lignes pour tout sauvegarder.
+# images/
+# bollards.data.js
+# bollards.json
+
+# scories
+saved.html
+base.json
+masks.txt
+.DS_Store

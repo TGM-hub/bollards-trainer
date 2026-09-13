@@ -1,0 +1,95 @@
+/* ============================================================
+   Extraction du jeu de données "bollards" de GeoHints
+   ------------------------------------------------------------
+   Usage :
+     1. Ouvrir https://geohints.com/meta/bollards
+     2. F12 -> Console -> coller tout ce fichier -> Entrée
+     3. Attendre ~15 s (24 requêtes espacées de 400 ms)
+     4. Deux fichiers se téléchargent : bollards.json + images.txt
+
+   Le script ne télécharge AUCUNE image (bloquées en CORS de toute
+   façon). Pour les rapatrier :
+     mkdir img && wget -i images.txt -P img --wait=0.3 --random-wait
+   ============================================================ */
+
+(async () => {
+  const SLEEP = 400;                       // ms entre deux requêtes : soyons polis
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const log = (...a) => console.log('%c[bollards]', 'color:#7cf', ...a);
+
+  // ---------- 1. entrées de base : pays + image + lien Maps ----------
+  const entries = [...document.querySelectorAll('img[src*="/storage/bollards/"]')].map(img => {
+    const card = img.closest('div');
+    return {
+      id:      +img.src.match(/bollard_(\d+)/)[1],
+      file:    img.src.split('/').pop(),
+      imgUrl:  img.src,
+      country: card?.querySelector('span.font-bold')?.textContent.trim() || '?',
+      maps:    card?.querySelector('a[href]')?.href || null,
+      props:   [],
+      rarity:  null,
+      continent: null,
+    };
+  });
+  const byId = new Map(entries.map(e => [e.id, e]));
+  log(`${entries.length} entrées, ${new Set(entries.map(e => e.country)).size} pays`);
+
+  // ---------- 2. tags : on rejoue chaque filtre côté serveur ----------
+  // NB : le filtre "Type" (Bollard/Barricade/Snowpole/...) est cassé sur
+  // le site — il renvoie toujours les 949 entrées. On l'ignore.
+  const filters = [...document.querySelectorAll('form input[type=checkbox]')]
+    .map(i => ({ dim: i.name, value: i.value }))
+    .filter(f => f.dim !== 'Type');
+
+  for (const f of filters) {
+    const url = `${location.origin}${location.pathname}?${encodeURIComponent(f.dim)}=${encodeURIComponent(f.value)}`;
+    const html = await (await fetch(url)).text();
+    const ids = new Set([...html.matchAll(/bollard_(\d+)\.jpg/g)].map(m => +m[1]));
+    for (const id of ids) {
+      const e = byId.get(id);
+      if (!e) continue;
+      if (f.dim === 'Property')  e.props.push(f.value);
+      if (f.dim === 'Rarity')    e.rarity = f.value;
+      if (f.dim === 'continent') e.continent = f.value;
+    }
+    log(`  ${f.dim}=${f.value} -> ${ids.size}`);
+    await sleep(SLEEP);
+  }
+
+  // ---------- 3. contrôles ----------
+  const noRarity = entries.filter(e => !e.rarity).length;
+  const noCont   = entries.filter(e => !e.continent).length;
+  const noProps  = entries.filter(e => !e.props.length).length;
+  log(`sans rareté: ${noRarity} | sans continent: ${noCont} | sans propriété: ${noProps}`);
+
+  const dataset = {
+    source: location.href,
+    note: 'Données de localisation curées par geohints.com — crédit obligatoire, usage non commercial.',
+    scrapedAt: new Date().toISOString(),
+    properties: [...new Set(entries.flatMap(e => e.props))].sort(),
+    countries: [...new Set(entries.map(e => e.country))].sort(),
+    entries,
+  };
+
+  // ---------- 4. téléchargements ----------
+  const dl = (name, content, type) => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type }));
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  };
+
+  dl('bollards.json', JSON.stringify(dataset, null, 1), 'application/json');
+  await sleep(600);
+  // même contenu en .js : à poser à côté de index.html, il se charge en
+  // double-clic sans serveur local (un <script src> n'est pas soumis au CORS
+  // des fetch en file://)
+  dl('bollards.data.js', 'window.BOLLARDS = ' + JSON.stringify(dataset) + ';', 'text/javascript');
+  await sleep(600);
+  dl('images.txt', entries.map(e => e.imgUrl).join('\n'), 'text/plain');
+
+  log('✅ terminé — bollards.json + bollards.data.js + images.txt téléchargés');
+  window.__bollards = dataset;   // dispo dans la console pour inspection
+  return dataset;
+})();
