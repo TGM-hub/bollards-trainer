@@ -6,16 +6,17 @@ Entraînement à la reconnaissance des bornes de signalisation pour GeoGuessr.
 
 ## Lancer
 
-Double-clic sur `index.html`. Pas de serveur, pas de build.
+En ligne : https://tgm-hub.github.io/bollards-trainer/ (ou double-clic sur `index.html`). Pas de serveur, pas de build.
 
 ## Contenu
 
 ```
 index.html          l'app (autonome, tout inline)
+publish.cmd/.ps1    aperçu, confirmation, commit, push
 bollards.data.js    le dataset, chargé automatiquement au démarrage
 bollards.json       le même dataset en JSON standard
 images/             les 949 photos
-scrape-geohints.js  reconstruit le dataset depuis zéro (voir plus bas)
+scrape-geohints.js.txt  reconstruit le dataset depuis zéro (voir plus bas)
 ```
 
 ## Ce que fait l'app
@@ -31,6 +32,8 @@ scrape-geohints.js  reconstruit le dataset depuis zéro (voir plus bas)
   C'est la liste de révision, générée toute seule.
 
 Clavier : `1`-`4` pour répondre, `Espace` pour enchaîner.
+
+Lien direct : `#fr` (code ISO) ouvre la fiche du pays par-dessus le quiz (utilisé par l'Atlas).
 
 ## Réglages utiles
 
@@ -62,5 +65,5 @@ l'ignore volontairement, sinon les tags seraient faux.
 ## Crédit
 
 Données de localisation curées par [GeoHints](https://geohints.com/meta/bollards).
-Les photos sont des captures Google Street View. Usage strictement personnel :
-ce repo reste privé et n'est pas déployé.
+Les photos sont des captures Google Street View. Usage d'entraînement
+personnel, non commercial.
