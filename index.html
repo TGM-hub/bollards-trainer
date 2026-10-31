@@ -24,8 +24,18 @@ button{font:inherit;color:var(--txt);background:var(--panel2);border:1px solid v
 button:hover{border-color:#3d4a5c}
 button.on{background:var(--accent);border-color:var(--accent);color:#04101f;font-weight:600}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
-.grid{display:grid;grid-template-columns:1fr 320px;gap:14px;align-items:start}
-@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.grid{display:block;max-width:860px;margin:0 auto}
+/* settings live in a drawer behind ⚙ (2026-10-31): the quiz gets the whole width */
+#settings{position:fixed;top:0;right:0;bottom:0;width:340px;max-width:92vw;overflow-y:auto;z-index:40;
+  background:var(--bg);border-left:1px solid var(--line);padding:14px;transform:translateX(105%);transition:transform .2s ease;visibility:hidden}
+body.set-open #settings{transform:none;visibility:visible}
+.backdrop{position:fixed;inset:0;background:rgba(5,8,12,.55);z-index:39}
+.sethead{display:flex;align-items:center;justify-content:space-between;margin:0 0 10px}
+.sethead h2{margin:0;font-size:16px}
+.sess{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:8px 14px;margin-bottom:10px;font-size:13px;color:var(--dim)}
+.sess b{color:var(--txt);margin-left:4px}
+.sess .bar{flex:1;min-width:80px;margin:0}
+@media(prefers-reduced-motion:reduce){#settings{transition:none}}
 /* Sur un ecran tactile il n'y a pas de clavier : tout ce qui y renvoie
    disparait, et les actions passent par de vrais boutons. */
 @media(hover:none),(pointer:coarse){.kbd{display:none!important}}
@@ -117,6 +127,10 @@ td.n{text-align:right;color:var(--dim);white-space:nowrap}
 .tgm-nav{display:inline-flex;gap:4px;align-items:center;margin-right:6px;flex:none}.tgm-nav>a{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:7px;border:1px solid currentColor;opacity:.5;color:inherit;text-decoration:none;font-size:14px;line-height:1}.tgm-nav>a:hover,.tgm-nav>a:focus-visible{opacity:1}
 .tgm-maps{position:relative;display:inline-block}.tgm-maps>summary{list-style:none;display:inline-grid;place-items:center;width:28px;height:28px;border-radius:7px;border:1px solid currentColor;opacity:.5;cursor:pointer;font-size:14px;line-height:1}.tgm-maps>summary::-webkit-details-marker{display:none}.tgm-maps[open]>summary,.tgm-maps>summary:hover{opacity:1}.tgm-pop{position:absolute;top:34px;left:0;z-index:9999;width:min(360px,calc(100vw - 24px));background:#1b2229;color:#e8edf2;border:1px solid #3a4652;border-radius:10px;padding:10px 12px;box-shadow:0 8px 24px #0006;font:13px/1.35 system-ui,sans-serif;text-align:left}.tgm-pop b{display:block;font-size:13px;margin-bottom:6px}.tgm-pop a{display:inline;width:auto;height:auto;border:0;opacity:1;color:#e8edf2;text-decoration:none}.tgm-pop a:hover{color:#f2c94c}.tgm-pop li{display:flex;gap:8px;align-items:baseline;margin:4px 0}.tgm-pop ul{list-style:none;margin:0;padding:0}.tgm-pop .lv{flex:none;width:16px;text-align:center;font-size:11px;border:1px solid #4b5866;border-radius:3px;color:#9fb0bf}.tgm-pop .ml{margin-left:auto;flex:none;color:#9fb0bf;font-size:12px}
 </style>
+<!-- tgm-pwa : hors-ligne et installation, généré par Atlas/tools/pwa.py -->
+<link rel="apple-touch-icon" href="icons/icon-192.png"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#12283a"><link rel="icon" href="icons/icon-192.png">
+<script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
+<!-- /tgm-pwa -->
 </head>
 <body>
 <div class="sheet" id="sheet" hidden><div class="card sheet-in" id="sheetIn"></div></div>
@@ -128,6 +142,7 @@ td.n{text-align:right;color:var(--dim);white-space:nowrap}
     <nav>
       <button id="mTrain" class="on">Training</button>
       <button id="mStats">Stats</button>
+      <button id="mSet" title="Settings (S)" aria-expanded="false">⚙</button>
     </nav>
   </header>
 
@@ -145,6 +160,11 @@ td.n{text-align:right;color:var(--dim);white-space:nowrap}
 
   <div class="grid" id="app" hidden>
     <main>
+      <div class="card sess" id="sess">
+        <span>Answers <b id="sN">0</b></span><span>Right <b id="sOk">0</b></span>
+        <span>Partial <b id="sHalf">0</b></span><span>Streak <b id="sStreak">0</b></span>
+        <div class="bar"><i id="sBar" style="width:0%"></i></div>
+      </div>
       <div class="card" id="quiz">
         <div class="photo">
           <img id="shot" alt="">
@@ -171,15 +191,9 @@ td.n{text-align:right;color:var(--dim);white-space:nowrap}
       </div>
     </main>
 
-    <aside>
-      <div class="card side">
-        <h2>Session</h2>
-        <div class="row"><span>Answers</span><b id="sN">0</b></div>
-        <div class="row"><span>Right</span><b id="sOk">0</b></div>
-        <div class="row"><span>Partial</span><b id="sHalf">0</b></div>
-        <div class="row"><span>Streak</span><b id="sStreak">0</b></div>
-        <div class="bar"><i id="sBar" style="width:0%"></i></div>
-      </div>
+    <div class="backdrop" id="setBack" hidden></div>
+    <aside id="settings" aria-label="Settings">
+      <div class="sethead"><h2>Settings</h2><button id="setClose" title="Close (Esc)">✕</button></div>
 
       <div class="card side">
         <h2>Rarity</h2>
@@ -261,6 +275,10 @@ function pushStats() {
   }
   if (DATA) s.total = new Set(DATA.entries.map(e => e.country)).size;
   TGM.stats.write('bollards', s);
+  // cross-trainer mix-ups (tgm.confusions): prog[c].wrong stays the reference, the seed mirrors it
+  const mix = [];
+  for (const [c, p] of Object.entries(prog)) for (const [g, n] of Object.entries((p && p.wrong) || {})) mix.push([ISO[c], ISO[g], n]);
+  TGM.confusions.seed('bollards', mix);
 }
 function P(c) { return prog[c] || (prog[c] = { seen: 0, ok: 0, box: 1, wrong: {} }); }
 
@@ -536,7 +554,10 @@ function answer(guesses) {
   else if (!hit) p.box = 1;
   // Une confusion n'est enregistrée que si le bon pays n'a pas été coché :
   // hésiter entre deux pays dont le bon n'est pas une erreur de reconnaissance.
-  if (!hit) for (const g of guesses) p.wrong[g] = (p.wrong[g] || 0) + 1;
+  if (!hit) for (const g of guesses) {
+    p.wrong[g] = (p.wrong[g] || 0) + 1;
+    if (window.TGM) TGM.confusions.add('bollards', ISO[truth], ISO[g]);
+  }
   save();
 
   sess.n++;
@@ -612,8 +633,20 @@ function closeSheet() {
 $('#sheet').onclick = e => { if (e.target.id === 'sheet') closeSheet(); };
 addEventListener('hashchange', sheetFromHash);
 
+// ---------------------------------------------------------------- settings drawer
+function setOpen(on) {
+  document.body.classList.toggle('set-open', on);
+  $('#setBack').hidden = !on; $('#mSet').setAttribute('aria-expanded', on);
+  if (on) $('#setClose').focus();
+}
+$('#mSet').onclick = () => setOpen(!document.body.classList.contains('set-open'));
+$('#setClose').onclick = () => setOpen(false);
+$('#setBack').onclick = () => setOpen(false);
+
 // ---------------------------------------------------------------- clavier
 addEventListener('keydown', e => {
+  if (document.body.classList.contains('set-open')) { if (e.key === 'Escape') setOpen(false); return; }
+  if ((e.key === 's' || e.key === 'S') && !e.ctrlKey && !e.metaKey && e.target.tagName !== 'INPUT' && $('#sheet').hidden) { setOpen(true); return; }
   if (!$('#sheet').hidden) { if (e.key === 'Escape') closeSheet(); return; }
   if ($('#stats').hidden === false) return;
   if (!answered && e.key >= '1' && e.key <= String(Math.min(9, NCHOICES))) {
